@@ -4,33 +4,53 @@
 #include <sys/wait.h>
 #include <signal.h>
 
+#define NUM_APPS 10
+pid_t app_pids[NUM_APPS];
+pid_t controller_pid;
+int current_app_index = 0;
+
+void scheduler_handler(int signum) {
+    printf("\nKernel: Trocando de processo \n");
+
+    kill(app_pids[current_app_index], SIGSTOP);
+
+    current_app_index = (current_app_index + 1) % NUM_APPS;
+
+    printf("Kernel: Próximo App a ser executado:PID %d \n\n", app_pids[current_app_index]);
+    kill(app_pids[current_app_index], SIGCONT);
+}
+
+
 int main() {
-    pid_t pid_filho;
+    printf("Kernel: Criando processos de aplicação...\n");
 
-    printf("Kernel: Vou criar o processo de aplicação A1...\n");
+    for (int i = 0; i < NUM_APPS; i++) {
+        app_pids[i] = fork();
+        if (app_pids[i] == 0) {
+            execvp("./app", NULL);
+        }
+    }
 
-    pid_filho = fork();
+    sleep(1); 
+    printf("Kernel: Parando todos os apps para iniciar o escalonamento...\n");
+    for (int i = 0; i < NUM_APPS; i++) {
+        kill(app_pids[i], SIGSTOP);
+    }
 
-    if (pid_filho == 0) {
-        char *args[] = {"./app", NULL};
-        execvp(args[0], args);
+    signal(SIGUSR1, scheduler_handler);
 
-    } else if (pid_filho > 0) {
-        printf("Kernel: App A1 criado com PID %d. Vou deixá-lo rodar por 3 segundos.\n", pid_filho);
-        sleep(3);
+    printf("Kernel: Criando o processo InterControllerSim\n");
+    controller_pid = fork();
+    if (controller_pid == 0) {
+        execvp("./InterControllerSim", NULL);
+    }
 
-        printf("\nKernel: Tempo esgotado! Enviando SIGSTOP para A1.\n");
-        kill(pid_filho, SIGSTOP);
-        sleep(3);
+    printf("\nKernel: Iniciando o primeiro processo (PID %d).\n", app_pids[0]);
+    kill(app_pids[0], SIGCONT);
 
-        printf("\nKernel: Reativando A1. Enviando SIGCONT.\n");
-        kill(pid_filho, SIGCONT);
-        sleep(3);
-
-        printf("\nKernel: Encerrando a simulação. Enviando SIGKILL para A1.\n");
-        kill(pid_filho, SIGKILL); 
-        wait(NULL); 
-        printf("Kernel: Simulação terminada.\n");
+    printf("Kernel: Entrando em modo de espera por interrupções...\n\n");
+    while(1) {
+        pause(); 
     }
 
     return 0;
