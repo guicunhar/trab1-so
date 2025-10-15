@@ -4,10 +4,14 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#define NUM_APPS 10
+#define NUM_APPS 2
 pid_t app_pids[NUM_APPS];
 pid_t controller_pid;
 int current_app_index = 0;
+
+void io_handler(int signum) {
+    printf("Kernel: IRQ1 recebido — operação de I/O concluída!\n");
+}
 
 void scheduler_handler(int signum) {
     printf("\nKernel: Trocando de processo \n");
@@ -27,7 +31,8 @@ int main() {
     for (int i = 0; i < NUM_APPS; i++) {
         app_pids[i] = fork();
         if (app_pids[i] == 0) {
-            execvp("./app", NULL);
+            char *args[] = {"./app", NULL};
+            execvp(args[0], args);
         }
     }
 
@@ -38,11 +43,13 @@ int main() {
     }
 
     signal(SIGUSR1, scheduler_handler);
+    signal(SIGUSR2, io_handler);
 
     printf("Kernel: Criando o processo InterControllerSim\n");
     controller_pid = fork();
     if (controller_pid == 0) {
-        execvp("./InterControllerSim", NULL);
+        char *args2[] = {"./InterControllerSim", NULL};
+        execvp(args2[0], args2);
     }
 
     printf("\nKernel: Iniciando o primeiro processo (PID %d).\n", app_pids[0]);
