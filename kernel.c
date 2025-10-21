@@ -213,7 +213,7 @@ void handle_syscall_from_app(int sig) {
         pcb_table[current_running].saved_pc = ctx.pc;
         pcb_table[current_running].syscall_param = ctx.operation;
         pcb_table[current_running].saved_pc_valid = 1;
-        printf("KERNEL: Contexto salvo: PC=%d, OP=%c\n",
+        printf("KERNEL: Contexto salvo: PC=%d, OP=%c\n\n",
                pcb_table[current_running].saved_pc,
                pcb_table[current_running].syscall_param);
         fflush(stdout);
@@ -231,7 +231,7 @@ void handle_syscall_from_app(int sig) {
     printf("Fila de bloqueados: [");
     for (int i = blocked_front; i != blocked_rear; i = (i + 1) % MAX_PROCESSES)
         printf(" A%d ", blocked_queue[i]);
-    printf("]\n");
+    printf("]\n\n");
     fflush(stdout);
 
     if (!io_in_progress) {
@@ -449,7 +449,7 @@ int main(int argc, char *argv[]) {
             close(app_to_kernel[0]);
             close(kernel_to_app[1]);
 
-            char fd_read_str[10], fd_write_str[10];
+            char fd_read_str[10], fd_write_str[10], use_io_str[2];
             sprintf(fd_read_str, "%d", kernel_to_app[0]);
             sprintf(fd_write_str, "%d", app_to_kernel[1]);
 

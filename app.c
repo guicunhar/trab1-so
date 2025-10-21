@@ -25,7 +25,7 @@
 #include <signal.h>
 #include <fcntl.h>
 
-#define MAX_ITERATIONS 10
+#define MAX_ITERATIONS 30
 
 /*******************************************************************************
  * VARIÁVEIS GLOBAIS
@@ -158,25 +158,33 @@ int main(int argc, char *argv[]) {
     while (pc < MAX_ITERATIONS) {
         int restored_pc = -1;
         if (read(pipe_from_kernel_fd, &restored_pc, sizeof(int)) > 0) {
-            // Restaurando contexto — não incrementa PC agora
             pc = restored_pc;
             printf("  App (PID %d): restaurando contexto (PC=%d)\n", getpid(), pc);
             fflush(stdout);
-        } else {
-            // Executando instrução normal
-            printf("  App (PID %d): executando instrucao (PC=%d)\n", getpid(), pc);
-            fflush(stdout);
-
-            if (use_io) {
-                if (pc == 5 || pc == 15) syscall_io('R');
-                else if (pc == 10 || pc == 20) syscall_io('W');
-            }
-
-            pc++; // só incrementa se for instrução normal
         }
 
-        sleep(1);
+        printf("  App (PID %d): executando instrucao (PC=%d)\n", getpid(), pc);
+        fflush(stdout);
+        // para os testes
+        if (use_io) {
+            if (pc == 5) {
+                pc++;
+                syscall_io('R');
+            }
+            else if (pc == 8) {
+                pc++;
+                syscall_io('W');
+            }
+            else {
+                pc++;
+            }
+        } else {
+            pc++;
+        }
+
+        sleep(2);
     }
+
 
 
     close(pipe_from_kernel_fd);
