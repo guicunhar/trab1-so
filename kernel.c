@@ -182,9 +182,9 @@ void schedule() {
            current_running, pcb_table[current_running].pid);
     fflush(stdout);
 
-    // --- Restaura o contexto salvo apenas se existir ---
+    // --- Restaura o contexto salvo ---
     if (pcb_table[current_running].saved_pc_valid) {
-        int restored_pc = pcb_table[current_running].saved_pc + 1;
+        int restored_pc = pcb_table[current_running].saved_pc;
         write(pcb_table[current_running].pipe_write_fd, &restored_pc, sizeof(int));
         pcb_table[current_running].saved_pc_valid = 0; // evita reenvio
     }
@@ -217,14 +217,19 @@ int main(int argc, char *argv[]) {
 
         pid_t pid = fork();
         if (pid == 0) {
-            close(app_to_kernel[0]); // app não lê
-            close(kernel_to_app[1]); // app não escreve
+            close(app_to_kernel[0]);
+            close(kernel_to_app[1]);
 
-            char fd_read_str[10], fd_write_str[10];
-            sprintf(fd_read_str, "%d", kernel_to_app[0]);  // kernel → app
-            sprintf(fd_write_str, "%d", app_to_kernel[1]); // app → kernel
+            char fd_read_str[10], fd_write_str[10], use_io_str[5];
 
-            execl("./app", "app", fd_read_str, fd_write_str, NULL);
+            // ALTERAR PARA TESTES
+            int use_io = (i >= 3) ? 1 : 0;
+
+            sprintf(fd_read_str, "%d", kernel_to_app[0]);
+            sprintf(fd_write_str, "%d", app_to_kernel[1]);
+            sprintf(use_io_str, "%d", use_io);
+
+            execl("./app", "app", fd_read_str, fd_write_str, use_io_str, NULL);
             perror("execl");
             exit(1);
         }
@@ -240,17 +245,13 @@ int main(int argc, char *argv[]) {
         pcb_table[i].pipe_write_fd = kernel_to_app[1];
         pcb_table[i].saved_pc = 0;
         pcb_table[i].syscall_param = '\0';
-        pcb_table[i].saved_pc_valid = 0; // <<< NOVO
+        pcb_table[i].saved_pc_valid = 0;
 
         printf("KERNEL: Processo A%d criado (PID %d)\n", i, pid);
-        fflush(stdout);
-    }
-
-    sleep(1);
-    printf("KERNEL: Parando todos os apps inicialmente...\n");
-    fflush(stdout);
-    for (int i = 0; i < num_apps; i++)
         kill(pcb_table[i].pid, SIGSTOP);
+        printf("KERNEL: Processo A%d PARADO INICIALMENTE (PID %d)\n", i, pid);
+        fflush(stdout);
+    }      
 
     signal(SIGUSR1, handle_irq0);
     signal(SIGUSR2, handle_syscall_from_app);

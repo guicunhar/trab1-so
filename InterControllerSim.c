@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
     printf("InterControllerSim: Iniciado. Kernel PID = %d\n", kernel_pid);
     fflush(stdout);
 
-    // 👇 novo: reage quando o kernel pedir I/O
+    // reage quando o kernel pedir I/O
     signal(SIGUSR2, handle_io_request);
 
     while (1) {
